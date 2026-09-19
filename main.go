@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 )
 
@@ -22,11 +23,20 @@ func main() {
 
 	fmt.Println("Client connected:", conn.RemoteAddr())
 
-	buffer := make([]byte, 1024)
-	n, err := conn.Read(buffer)
-	if err != nil {
-		panic(err)
-	}
+	buffer := make([]byte, 4)
 
-	fmt.Println("Received", string(buffer[:n]))
+	for {
+		n, err := conn.Read(buffer)
+
+		if err == io.EOF {
+			fmt.Println("Client Disconnected")
+			break
+		}
+
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("Read %d bytes: %q\n", n, string(buffer[:n]))
+	}	
 }
