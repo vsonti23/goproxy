@@ -21,4 +21,12 @@ func main() {
 	defer conn.Close()
 
 	fmt.Println("Client connected:", conn.RemoteAddr())
+
+	buffer := make([]byte, 1024)
+	n, err := conn.Read(buffer)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Received", string(buffer[:n]))
 }
