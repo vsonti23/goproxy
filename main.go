@@ -70,23 +70,6 @@ func handleConnection(conn net.Conn) {
 }
 
 func copyData(dst net.Conn, src net.Conn) error {
-	buffer := make([]byte, 1024)
-
-	for {
-		n, err := src.Read(buffer)
-		if err == io.EOF {
-			return nil
-		}
-		
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("Read: %q\n", string(buffer[:n]))
-
-		_, err = dst.Write(buffer[:n])
-		if err != nil {
-			return err
-		}
-	}
+	_, err := io.Copy(dst, src)
+	return err
 }
