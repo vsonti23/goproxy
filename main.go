@@ -13,7 +13,7 @@ func main() {
 	}
 	defer listener.Close()
 	
-	fmt.Println(("Listening on :8080"))
+	fmt.Println("Listening on :8080")
 
 	for {
 		conn, err := listener.Accept()
@@ -38,26 +38,42 @@ func handleConnection(conn net.Conn) {
 
 	fmt.Println("Connected to backend:", backend.RemoteAddr())
 
-	buffer := make([]byte, 4)
+	done := make(chan struct{}, 2)
+
+	go func() {
+		copyData(backend, conn)
+		done <- struct{}{}
+	}()
+
+	go func() {
+		copyData(conn, backend)
+		done <- struct{}{}
+	}()
+
+	<-done
+}
+
+func copyData(dst net.Conn, src net.Conn) {
+	buffer := make([]byte, 1024)
 
 	for {
-		n, err := conn.Read(buffer)
-
+		n, err := src.Read(buffer)
 		if err == io.EOF {
-			fmt.Println("Client Disconnected")
+			fmt.Println("Connection Closed")
 			break
 		}
-
+		
 		if err != nil {
-			panic(err)
+			fmt.Println("Failed to read:", err)
+			break
 		}
 
 		fmt.Printf("Read: %q\n", string(buffer[:n]))
 
-		_, err = backend.Write(buffer[:n])
+		_, err = dst.Write(buffer[:n])
 		if err != nil {
-			fmt.Println("Failed to write to backend:", err)
+			fmt.Println("Failed to write:", err)
 			break
 		}
-	}	
+	}
 }
