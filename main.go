@@ -38,22 +38,34 @@ func handleConnection(conn net.Conn) {
 
 	fmt.Println("Connected to backend:", backend.RemoteAddr())
 
+	clientTCP := conn.(*net.TCPConn)
+	backendTCP := backend.(*net.TCPConn)
+
 	done := make(chan error, 2)
 
 	go func() {
-		done <- copyData(backend, conn)
+		err := copyData(backend, conn)
+		backendTCP.CloseWrite()
+		done <- err
 	}()
 
 	go func() {
-		done <- copyData(conn, backend)
+		err := copyData(conn, backend)
+		clientTCP.CloseWrite()
+		done <- err
 	}()
 
-	connErr := <-done
+	err1 := <-done
+	err2 := <-done
 
 	fmt.Println("Closing Connection")
 
-	if connErr != nil {
-		fmt.Println("Proxy connection ended with error:", connErr)
+	if err1 != nil {
+		fmt.Println("Proxy connection ended with error:", err1)
+	}
+
+	if err2 != nil {
+		fmt.Println("Proxy connection ended with error:", err2)
 	}
 }
 
