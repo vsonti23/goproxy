@@ -38,42 +38,43 @@ func handleConnection(conn net.Conn) {
 
 	fmt.Println("Connected to backend:", backend.RemoteAddr())
 
-	done := make(chan struct{}, 2)
+	done := make(chan error, 2)
 
 	go func() {
-		copyData(backend, conn)
-		done <- struct{}{}
+		done <- copyData(backend, conn)
 	}()
 
 	go func() {
-		copyData(conn, backend)
-		done <- struct{}{}
+		done <- copyData(conn, backend)
 	}()
 
-	<-done
+	conn_err := <-done
+
+	fmt.Println("Closing Connection")
+
+	if conn_err != nil {
+		fmt.Println("Proxy connection ended with error:", conn_err)
+	}
 }
 
-func copyData(dst net.Conn, src net.Conn) {
+func copyData(dst net.Conn, src net.Conn) error {
 	buffer := make([]byte, 1024)
 
 	for {
 		n, err := src.Read(buffer)
 		if err == io.EOF {
-			fmt.Println("Connection Closed")
-			break
+			return nil
 		}
 		
 		if err != nil {
-			fmt.Println("Failed to read:", err)
-			break
+			return err
 		}
 
 		fmt.Printf("Read: %q\n", string(buffer[:n]))
 
 		_, err = dst.Write(buffer[:n])
 		if err != nil {
-			fmt.Println("Failed to write:", err)
-			break
+			return err
 		}
 	}
 }
