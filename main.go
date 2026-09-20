@@ -48,12 +48,12 @@ func handleConnection(conn net.Conn) {
 		done <- copyData(conn, backend)
 	}()
 
-	conn_err := <-done
+	connErr := <-done
 
 	fmt.Println("Closing Connection")
 
-	if conn_err != nil {
-		fmt.Println("Proxy connection ended with error:", conn_err)
+	if connErr != nil {
+		fmt.Println("Proxy connection ended with error:", connErr)
 	}
 }
 
