@@ -4,7 +4,16 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync/atomic"
 )
+
+var backends = []string{
+	"localhost:9001",
+	"localhost:9002",
+	"localhost:9003",
+}
+
+var nextBackend atomic.Uint64
 
 func main() {
 	listener, err := net.Listen("tcp", ":8080")
@@ -28,8 +37,10 @@ func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	fmt.Println("Client connected:", conn.RemoteAddr())
+	
+	backendAddress := chooseBackend()
+	backend, err := net.Dial("tcp", backendAddress)
 
-	backend, err := net.Dial("tcp", "localhost:9000")
 	if err != nil {
 		fmt.Println("Failed to connect to backend", err)
 		return
@@ -72,4 +83,10 @@ func handleConnection(conn net.Conn) {
 func copyData(dst net.Conn, src net.Conn) error {
 	_, err := io.Copy(dst, src)
 	return err
+}
+
+func chooseBackend() string {
+	value := nextBackend.Add(1)
+	index := int(value - 1) % len(backends)
+	return backends[index]
 }
