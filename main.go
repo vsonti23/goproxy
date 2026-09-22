@@ -1,17 +1,26 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
+	"sync"
 	"sync/atomic"
 )
 
-var backends = []string{
-	"localhost:9001",
-	"localhost:9002",
-	"localhost:9003",
+type Backend struct {
+	Address string
+	Healthy bool
 }
+
+var backends = []Backend{
+	{ Address: "localhost:9001", Healthy: true },
+	{ Address: "localhost:9002", Healthy: true },
+	{ Address: "localhost:9003", Healthy: true },
+}
+
+var backendsMu sync.RWMutex
 
 var nextBackend atomic.Uint64
 
@@ -38,14 +47,17 @@ func handleConnection(conn net.Conn) {
 
 	fmt.Println("Client connected:", conn.RemoteAddr())
 	
-	backendAddress := chooseBackend()
-	backend, err := net.Dial("tcp", backendAddress)
-
+	backend, err := connectToBackend()
 	if err != nil {
-		fmt.Println("Failed to connect to backend", err)
+		fmt.Println("Error connecting to a server", err)
 		return
 	}
+
 	defer backend.Close()
+
+	if err != nil {
+		
+	}
 
 	fmt.Println("Connected to backend:", backend.RemoteAddr())
 
@@ -85,8 +97,48 @@ func copyData(dst net.Conn, src net.Conn) error {
 	return err
 }
 
-func chooseBackend() string {
+func chooseBackend() (Backend, error) {
+	backendsMu.RLock()
+	defer backendsMu.RUnlock()
+
 	value := nextBackend.Add(1)
-	index := int(value - 1) % len(backends)
-	return backends[index]
+	start := int(value - 1) % len(backends)
+
+	for i := 0; i < len(backends); i++ {
+		index := (start + i) % len(backends)
+		if backends[index].Healthy {
+			return backends[index], nil
+		}
+	}
+
+	return Backend{}, errors.New("No healthy servers available")
+}
+
+func markBackendUnhealthy(address string) {
+	backendsMu.Lock()
+	defer backendsMu.Unlock()
+
+	for i := range backends {
+		if backends[i].Address == address {
+			backends[i].Healthy = false
+			return
+		}
+	}
+}
+
+func connectToBackend() (net.Conn, error) {
+	for {
+		selected, err := chooseBackend()
+		if err != nil {
+			return nil, err
+		}
+
+		conn, err := net.Dial("tcp", selected.Address)
+		if err == nil {
+			return conn, nil
+		}
+
+		fmt.Println("Backend unavailable:", selected.Address)
+		markBackendUnhealthy(selected.Address)
+	}
 }
