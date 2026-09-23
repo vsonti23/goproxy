@@ -129,7 +129,7 @@ func connectToBackend() (net.Conn, error) {
 			return nil, err
 		}
 
-		conn, err := net.Dial("tcp", selected.Address)
+		conn, err := net.DialTimeout("tcp", selected.Address, 2 * time.Second)
 		if err == nil {
 			return conn, nil
 		}
