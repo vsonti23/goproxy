@@ -104,17 +104,22 @@ func chooseBackend() (Backend, error) {
 	backendsMu.RLock()
 	defer backendsMu.RUnlock()
 
-	value := nextBackend.Add(1)
-	start := int(value - 1) % len(backends)
+	healthyBackends := make([]Backend, 0, len(backends))
 
-	for i := 0; i < len(backends); i++ {
-		index := (start + i) % len(backends)
-		if backends[index].Healthy {
-			return backends[index], nil
+	for _, backend := range backends {
+		if backend.Healthy {
+			healthyBackends = append(healthyBackends, backend)
 		}
 	}
 
-	return Backend{}, errors.New("No healthy servers available")
+	if len(healthyBackends) == 0 {
+		return Backend{}, errors.New("No healthy servers available")
+	}
+
+	value := nextBackend.Add(1)
+	index := int(value - 1) % len(healthyBackends)
+
+	return healthyBackends[index], nil
 }
 
 func connectToBackend() (net.Conn, error) {
