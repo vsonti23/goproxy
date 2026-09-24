@@ -65,7 +65,7 @@ func copyData(dst net.Conn, src net.Conn) error {
 
 func connectToBackend() (net.Conn, Backend, error) {
 	for {
-		selected, err := chooseBackend()
+		selected, err := chooseLeastConnectionsBackend()
 		if err != nil {
 			return nil, Backend{}, err
 		}
