@@ -21,7 +21,7 @@ func chooseLeastConnectionsBackend() (Backend, error) {
 			continue
 		}
 
-		if !found || backends[i].ActiveConnections < minConnections  {
+		if !found || backends[i].ActiveConnections < minConnections {
 			found = true
 			candidateIndices = []int{i}
 			minConnections = backends[i].ActiveConnections
@@ -38,7 +38,7 @@ func chooseLeastConnectionsBackend() (Backend, error) {
 	}
 
 	value := nextBackend.Add(1)
-	candidateIndex := int(value - 1) % len(candidateIndices)
+	candidateIndex := int(value-1) % len(candidateIndices)
 	index := candidateIndices[candidateIndex]
 	backends[index].ActiveConnections++
 	fmt.Printf(

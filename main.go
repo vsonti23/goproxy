@@ -11,7 +11,7 @@ func main() {
 		panic(err)
 	}
 	defer listener.Close()
-	
+
 	fmt.Println("Listening on :8080")
 
 	go runHealthChecks()
@@ -20,7 +20,7 @@ func main() {
 		conn, err := listener.Accept()
 		if err != nil {
 			panic(err)
-		}	
+		}
 		go handleConnection(conn)
 	}
 }

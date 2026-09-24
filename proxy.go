@@ -11,13 +11,13 @@ func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	fmt.Println("Client connected:", conn.RemoteAddr())
-	
+
 	serverConn, serverData, err := connectToBackend()
 	if err != nil {
 		fmt.Println("Error connecting to a server", err)
 		return
 	}
-	
+
 	defer func() {
 		decrementConnections(serverData.Address)
 		serverConn.Close()
@@ -28,7 +28,7 @@ func handleConnection(conn net.Conn) {
 	clientTCP := conn.(*net.TCPConn)
 	backendTCP := serverConn.(*net.TCPConn)
 
-	done := make(chan error, 2)	
+	done := make(chan error, 2)
 
 	go func() {
 		err := copyData(serverConn, conn)
@@ -68,7 +68,7 @@ func connectToBackend() (net.Conn, Backend, error) {
 			return nil, Backend{}, err
 		}
 
-		conn, err := net.DialTimeout("tcp", selected.Address, 2 * time.Second)
+		conn, err := net.DialTimeout("tcp", selected.Address, 2*time.Second)
 		if err == nil {
 			return conn, selected, nil
 		}

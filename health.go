@@ -9,7 +9,7 @@ func checkBackendHealth(address string) bool {
 	conn, err := net.DialTimeout(
 		"tcp",
 		address,
-		2 * time.Second,
+		2*time.Second,
 	)
 	if err != nil {
 		return false
