@@ -29,3 +29,33 @@ func chooseBackend() (Backend, error) {
 
 	return healthyBackends[index], nil
 }
+
+func chooseLeastConnectionsBackend() (Backend, error) {
+	backendsMu.RLock()
+	defer backendsMu.Unlock()
+
+	var selected Backend
+	found := false
+
+	for _, backend := range backends {
+		if !backend.Healthy {
+			continue
+		}
+
+		if !found {
+			found = true
+			selected = backend
+			continue
+		}
+
+		if selected.ActiveConnections > backend.ActiveConnections {
+			selected = backend
+		}
+	}
+
+	if !found {
+		return Backend{}, errors.New("No healthy servers available")
+	}
+
+	return selected, nil
+}
