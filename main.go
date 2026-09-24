@@ -13,12 +13,13 @@ import (
 type Backend struct {
 	Address string
 	Healthy bool
+	ActiveConnections int
 }
 
 var backends = []Backend{
-	{ Address: "localhost:9001", Healthy: true },
-	{ Address: "localhost:9002", Healthy: true },
-	{ Address: "localhost:9003", Healthy: true },
+	{ Address: "localhost:9001", Healthy: true, ActiveConnections: 0 },
+	{ Address: "localhost:9002", Healthy: true, ActiveConnections: 0 },
+	{ Address: "localhost:9003", Healthy: true, ActiveConnections: 0 },
 }
 
 var backendsMu sync.RWMutex
@@ -50,33 +51,34 @@ func handleConnection(conn net.Conn) {
 
 	fmt.Println("Client connected:", conn.RemoteAddr())
 	
-	backend, err := connectToBackend()
+	serverConn, serverData, err := connectToBackend()
 	if err != nil {
 		fmt.Println("Error connecting to a server", err)
 		return
 	}
 
-	defer backend.Close()
+	incrementConnections(serverData.Address)
 
-	if err != nil {
-		
-	}
+	defer func() {
+		decrementConnections(serverData.Address)
+		serverConn.Close()
+	}()
 
-	fmt.Println("Connected to backend:", backend.RemoteAddr())
+	fmt.Println("Connected to backend:", serverConn.RemoteAddr())
 
 	clientTCP := conn.(*net.TCPConn)
-	backendTCP := backend.(*net.TCPConn)
+	backendTCP := serverConn.(*net.TCPConn)
 
-	done := make(chan error, 2)
+	done := make(chan error, 2)	
 
 	go func() {
-		err := copyData(backend, conn)
+		err := copyData(serverConn, conn)
 		backendTCP.CloseWrite()
 		done <- err
 	}()
 
 	go func() {
-		err := copyData(conn, backend)
+		err := copyData(conn, serverConn)
 		clientTCP.CloseWrite()
 		done <- err
 	}()
@@ -100,6 +102,23 @@ func copyData(dst net.Conn, src net.Conn) error {
 	return err
 }
 
+func connectToBackend() (net.Conn, Backend, error) {
+	for {
+		selected, err := chooseBackend()
+		if err != nil {
+			return nil, Backend{}, err
+		}
+
+		conn, err := net.DialTimeout("tcp", selected.Address, 2 * time.Second)
+		if err == nil {
+			return conn, selected, nil
+		}
+
+		fmt.Println("Backend unavailable:", selected.Address)
+		setBackendHealth(selected.Address, false)
+	}
+}
+
 func chooseBackend() (Backend, error) {
 	backendsMu.RLock()
 	defer backendsMu.RUnlock()
@@ -120,23 +139,6 @@ func chooseBackend() (Backend, error) {
 	index := int(value - 1) % len(healthyBackends)
 
 	return healthyBackends[index], nil
-}
-
-func connectToBackend() (net.Conn, error) {
-	for {
-		selected, err := chooseBackend()
-		if err != nil {
-			return nil, err
-		}
-
-		conn, err := net.DialTimeout("tcp", selected.Address, 2 * time.Second)
-		if err == nil {
-			return conn, nil
-		}
-
-		fmt.Println("Backend unavailable:", selected.Address)
-		setBackendHealth(selected.Address, false)
-	}
 }
 
 func checkBackendHealth(address string) bool {
@@ -187,5 +189,39 @@ func runHealthChecks() {
 		}
 
 		time.Sleep(5 * time.Second)
+	}
+}
+
+func incrementConnections(address string) {
+	backendsMu.Lock()
+	defer backendsMu.Unlock()
+
+	for i := range backends {
+		if backends[i].Address == address {
+			backends[i].ActiveConnections++
+			fmt.Printf(
+				"%s active connections: %d\n",
+				address,
+				backends[i].ActiveConnections,
+			)
+			return
+		}
+	}
+}
+
+func decrementConnections(address string) {
+	backendsMu.Lock()
+	defer backendsMu.Unlock()
+
+	for i := range backends {
+		if backends[i].Address == address {
+			backends[i].ActiveConnections--
+			fmt.Printf(
+				"%s active connections: %d\n",
+				address,
+				backends[i].ActiveConnections,
+			)
+			return
+		}
 	}
 }
