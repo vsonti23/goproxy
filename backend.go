@@ -44,23 +44,6 @@ func getBackendAddresses() []string {
 	return addresses
 }
 
-func incrementConnections(address string) {
-	backendsMu.Lock()
-	defer backendsMu.Unlock()
-
-	for i := range backends {
-		if backends[i].Address == address {
-			backends[i].ActiveConnections++
-			fmt.Printf(
-				"%s active connections: %d\n",
-				address,
-				backends[i].ActiveConnections,
-			)
-			return
-		}
-	}
-}
-
 func decrementConnections(address string) {
 	backendsMu.Lock()
 	defer backendsMu.Unlock()

@@ -19,8 +19,6 @@ func checkBackendHealth(address string) bool {
 	return true
 }
 
-
-
 func runHealthChecks() {
 	for {
 		addresses := getBackendAddresses()

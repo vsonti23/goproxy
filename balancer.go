@@ -2,33 +2,34 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"sync/atomic"
 )
 
 var nextBackend atomic.Uint64
 
 func chooseLeastConnectionsBackend() (Backend, error) {
-	backendsMu.RLock()
-	defer backendsMu.RUnlock()
+	backendsMu.Lock()
+	defer backendsMu.Unlock()
 
-	var candidates []Backend
+	var candidateIndices []int
 	minConnections := 0
 	found := false
 
-	for _, backend := range backends {
-		if !backend.Healthy {
+	for i := range backends {
+		if !backends[i].Healthy {
 			continue
 		}
 
-		if !found || backend.ActiveConnections < minConnections  {
+		if !found || backends[i].ActiveConnections < minConnections  {
 			found = true
-			candidates = []Backend{backend}
-			minConnections = backend.ActiveConnections
+			candidateIndices = []int{i}
+			minConnections = backends[i].ActiveConnections
 			continue
 		}
 
-		if backend.ActiveConnections == minConnections {
-			candidates = append(candidates, backend)
+		if backends[i].ActiveConnections == minConnections {
+			candidateIndices = append(candidateIndices, i)
 		}
 	}
 
@@ -37,7 +38,14 @@ func chooseLeastConnectionsBackend() (Backend, error) {
 	}
 
 	value := nextBackend.Add(1)
-	index := int(value - 1) % len(candidates)
+	candidateIndex := int(value - 1) % len(candidateIndices)
+	index := candidateIndices[candidateIndex]
+	backends[index].ActiveConnections++
+	fmt.Printf(
+		"%s active connections: %d\n",
+		backends[index].Address,
+		backends[index].ActiveConnections,
+	)
 
-	return candidates[index], nil
+	return backends[index], nil
 }

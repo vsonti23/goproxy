@@ -17,9 +17,7 @@ func handleConnection(conn net.Conn) {
 		fmt.Println("Error connecting to a server", err)
 		return
 	}
-
-	incrementConnections(serverData.Address)
-
+	
 	defer func() {
 		decrementConnections(serverData.Address)
 		serverConn.Close()
@@ -76,6 +74,7 @@ func connectToBackend() (net.Conn, Backend, error) {
 		}
 
 		fmt.Println("Backend unavailable:", selected.Address)
+		decrementConnections(selected.Address)
 		setBackendHealth(selected.Address, false)
 	}
 }
