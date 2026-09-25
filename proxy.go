@@ -4,12 +4,23 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
 	"time"
 )
 
 type Proxy struct {
 	balancer    *Balancer
 	dialTimeout time.Duration
+	wg          sync.WaitGroup
+}
+
+func (p *Proxy) serveConnection(conn net.Conn) {
+	p.wg.Add(1)
+
+	go func() {
+		defer p.wg.Done()
+		p.handleConnection(conn)
+	}()
 }
 
 func (p *Proxy) handleConnection(conn net.Conn) {
@@ -82,4 +93,8 @@ func (p *Proxy) connectToBackend() (net.Conn, Backend, error) {
 		p.balancer.decrementConnections(selected.Address)
 		p.balancer.setBackendHealth(selected.Address, false)
 	}
+}
+
+func (p *Proxy) wait() {
+	p.wg.Wait()
 }

@@ -38,8 +38,10 @@ func main() {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Fatal(err)
+			break
 		}
-		go proxy.handleConnection(conn)
+		proxy.serveConnection(conn)
 	}
+
+	proxy.wait()
 }
