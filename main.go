@@ -22,7 +22,13 @@ func main() {
 
 	fmt.Printf("Listening on %s\n", config.ListenAddress)
 
-	go runHealthChecks(balancer, &config)
+	healthChecker := HealthChecker{
+		balancer:    balancer,
+		dialTimeout: config.DialTimeout,
+		interval:    config.HealthInterval,
+	}
+
+	go healthChecker.run()
 
 	proxy := Proxy{
 		balancer:    balancer,
