@@ -32,7 +32,7 @@ func main() {
 
 	go func() {
 		<-ctx.Done()
-		fmt.Println("Shutting down...")
+		fmt.Println("\nShutting down...")
 		listener.Close()
 	}()
 
