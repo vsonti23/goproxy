@@ -7,19 +7,24 @@ import (
 	"time"
 )
 
-func handleConnection(conn net.Conn, balancer *Balancer, timeout time.Duration) {
+type Proxy struct {
+	balancer    *Balancer
+	dialTimeout time.Duration
+}
+
+func (p *Proxy) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	fmt.Println("Client connected:", conn.RemoteAddr())
 
-	serverConn, serverData, err := connectToBackend(balancer, timeout)
+	serverConn, serverData, err := p.connectToBackend()
 	if err != nil {
 		fmt.Println("Error connecting to a server", err)
 		return
 	}
 
 	defer func() {
-		balancer.decrementConnections(serverData.Address)
+		p.balancer.decrementConnections(serverData.Address)
 		serverConn.Close()
 	}()
 
@@ -61,20 +66,20 @@ func copyData(dst net.Conn, src net.Conn) error {
 	return err
 }
 
-func connectToBackend(balancer *Balancer, timeout time.Duration) (net.Conn, Backend, error) {
+func (p *Proxy) connectToBackend() (net.Conn, Backend, error) {
 	for {
-		selected, err := balancer.chooseLeastConnectionsBackend()
+		selected, err := p.balancer.chooseLeastConnectionsBackend()
 		if err != nil {
 			return nil, Backend{}, err
 		}
 
-		conn, err := net.DialTimeout("tcp", selected.Address, timeout)
+		conn, err := net.DialTimeout("tcp", selected.Address, p.dialTimeout)
 		if err == nil {
 			return conn, selected, nil
 		}
 
 		fmt.Println("Backend unavailable:", selected.Address)
-		balancer.decrementConnections(selected.Address)
-		balancer.setBackendHealth(selected.Address, false)
+		p.balancer.decrementConnections(selected.Address)
+		p.balancer.setBackendHealth(selected.Address, false)
 	}
 }

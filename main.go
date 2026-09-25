@@ -24,11 +24,16 @@ func main() {
 
 	go runHealthChecks(balancer, &config)
 
+	proxy := Proxy{
+		balancer:    balancer,
+		dialTimeout: config.DialTimeout,
+	}
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			panic(err)
 		}
-		go handleConnection(conn, balancer, config.DialTimeout)
+		go proxy.handleConnection(conn)
 	}
 }
