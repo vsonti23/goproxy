@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
@@ -14,11 +18,23 @@ func main() {
 
 	balancer := newBalancer(config.BackendAddresses)
 
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
+	defer stop()
+
 	listener, err := net.Listen("tcp", config.ListenAddress)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer listener.Close()
+
+	go func() {
+		<-ctx.Done()
+		fmt.Println("Shutting down...")
+		listener.Close()
+	}()
 
 	fmt.Printf("Listening on %s\n", config.ListenAddress)
 
@@ -38,10 +54,16 @@ func main() {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			break
+			if ctx.Err() != nil {
+				break
+			}
+
+			log.Printf("accept error: %v", err)
+			continue
 		}
 		proxy.serveConnection(conn)
 	}
 
 	proxy.wait()
+	fmt.Println("Shutdown complete")
 }
