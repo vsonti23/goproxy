@@ -44,7 +44,7 @@ func main() {
 		interval:    config.HealthInterval,
 	}
 
-	go healthChecker.run()
+	go healthChecker.run(ctx)
 
 	proxy := Proxy{
 		balancer:    balancer,

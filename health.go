@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net"
 	"time"
 )
@@ -25,7 +26,10 @@ func (hc *HealthChecker) check(address string) bool {
 	return true
 }
 
-func (hc *HealthChecker) run() {
+func (hc *HealthChecker) run(ctx context.Context) {
+	ticker := time.NewTicker(hc.interval)
+	defer ticker.Stop()
+
 	for {
 		addresses := hc.balancer.getBackendAddresses()
 		for _, address := range addresses {
@@ -33,6 +37,11 @@ func (hc *HealthChecker) run() {
 			hc.balancer.setBackendHealth(address, healthy)
 		}
 
-		time.Sleep(hc.interval)
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			continue
+		}
 	}
 }
