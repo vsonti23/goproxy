@@ -3,32 +3,52 @@ package main
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 )
 
-var nextBackend atomic.Uint64
+type Balancer struct {
+	backends    []Backend
+	mu          sync.RWMutex
+	nextBackend atomic.Uint64
+}
 
-func chooseLeastConnectionsBackend() (Backend, error) {
-	backendsMu.Lock()
-	defer backendsMu.Unlock()
+func newBalancer(addresses []string) *Balancer {
+	backends := make([]Backend, 0, len(addresses))
+
+	for _, address := range addresses {
+		backends = append(backends, Backend{
+			Address: address,
+			Healthy: true,
+		})
+	}
+
+	return &Balancer{
+		backends: backends,
+	}
+}
+
+func (b *Balancer) chooseLeastConnectionsBackend() (Backend, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
 	var candidateIndices []int
 	minConnections := 0
 	found := false
 
-	for i := range backends {
-		if !backends[i].Healthy {
+	for i := range b.backends {
+		if !b.backends[i].Healthy {
 			continue
 		}
 
-		if !found || backends[i].ActiveConnections < minConnections {
+		if !found || b.backends[i].ActiveConnections < minConnections {
 			found = true
 			candidateIndices = []int{i}
-			minConnections = backends[i].ActiveConnections
+			minConnections = b.backends[i].ActiveConnections
 			continue
 		}
 
-		if backends[i].ActiveConnections == minConnections {
+		if b.backends[i].ActiveConnections == minConnections {
 			candidateIndices = append(candidateIndices, i)
 		}
 	}
@@ -37,15 +57,15 @@ func chooseLeastConnectionsBackend() (Backend, error) {
 		return Backend{}, errors.New("No healthy servers available")
 	}
 
-	value := nextBackend.Add(1)
+	value := b.nextBackend.Add(1)
 	candidateIndex := int(value-1) % len(candidateIndices)
 	index := candidateIndices[candidateIndex]
-	backends[index].ActiveConnections++
+	b.backends[index].ActiveConnections++
 	fmt.Printf(
 		"%s active connections: %d\n",
-		backends[index].Address,
-		backends[index].ActiveConnections,
+		b.backends[index].Address,
+		b.backends[index].ActiveConnections,
 	)
 
-	return backends[index], nil
+	return b.backends[index], nil
 }

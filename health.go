@@ -5,11 +5,11 @@ import (
 	"time"
 )
 
-func checkBackendHealth(address string) bool {
+func checkBackendHealth(address string, timeout time.Duration) bool {
 	conn, err := net.DialTimeout(
 		"tcp",
 		address,
-		2*time.Second,
+		timeout,
 	)
 	if err != nil {
 		return false
@@ -19,14 +19,14 @@ func checkBackendHealth(address string) bool {
 	return true
 }
 
-func runHealthChecks() {
+func runHealthChecks(balancer *Balancer, config *Config) {
 	for {
-		addresses := getBackendAddresses()
+		addresses := balancer.getBackendAddresses()
 		for _, address := range addresses {
-			healthy := checkBackendHealth(address)
-			setBackendHealth(address, healthy)
+			healthy := checkBackendHealth(address, config.DialTimeout)
+			balancer.setBackendHealth(address, healthy)
 		}
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(config.HealthInterval)
 	}
 }

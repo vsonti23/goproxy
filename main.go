@@ -2,25 +2,33 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 )
 
 func main() {
-	listener, err := net.Listen("tcp", ":8080")
+	config, err := parseConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	balancer := newBalancer(config.BackendAddresses)
+
+	listener, err := net.Listen("tcp", config.ListenAddress)
 	if err != nil {
 		panic(err)
 	}
 	defer listener.Close()
 
-	fmt.Println("Listening on :8080")
+	fmt.Printf("Listening on %s\n", config.ListenAddress)
 
-	go runHealthChecks()
+	go runHealthChecks(balancer, &config)
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			panic(err)
 		}
-		go handleConnection(conn)
+		go handleConnection(conn, balancer, config.DialTimeout)
 	}
 }
