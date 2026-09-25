@@ -16,7 +16,7 @@ func main() {
 
 	listener, err := net.Listen("tcp", config.ListenAddress)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer listener.Close()
 
@@ -38,7 +38,7 @@ func main() {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		go proxy.handleConnection(conn)
 	}
