@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -64,6 +65,9 @@ func main() {
 		proxy.serveConnection(conn)
 	}
 
-	proxy.wait()
-	fmt.Println("Shutdown complete")
+	if proxy.waitWithTimeout(10 * time.Second) {
+		fmt.Println("All connections drained")
+	} else {
+		fmt.Println("Shutdown timed out")
+	}
 }

@@ -95,6 +95,18 @@ func (p *Proxy) connectToBackend() (net.Conn, Backend, error) {
 	}
 }
 
-func (p *Proxy) wait() {
-	p.wg.Wait()
+func (p *Proxy) waitWithTimeout(timeout time.Duration) bool {
+	done := make(chan struct{})
+
+	go func() {
+		p.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
 }
