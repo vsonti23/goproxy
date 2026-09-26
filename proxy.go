@@ -12,15 +12,43 @@ type Proxy struct {
 	balancer    *Balancer
 	dialTimeout time.Duration
 	wg          sync.WaitGroup
+	mu          sync.Mutex
+	connections map[net.Conn]struct{}
 }
 
 func (p *Proxy) serveConnection(conn net.Conn) {
 	p.wg.Add(1)
+	p.addConnection(conn)
 
 	go func() {
 		defer p.wg.Done()
+		defer p.removeConnection(conn)
+
 		p.handleConnection(conn)
 	}()
+}
+
+func (p *Proxy) addConnection(conn net.Conn) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.connections[conn] = struct{}{}
+}
+
+func (p *Proxy) removeConnection(conn net.Conn) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	delete(p.connections, conn)
+}
+
+func (p *Proxy) closeConnections() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for conn := range p.connections {
+		conn.Close()
+	}
 }
 
 func (p *Proxy) handleConnection(conn net.Conn) {
@@ -93,6 +121,10 @@ func (p *Proxy) connectToBackend() (net.Conn, Backend, error) {
 		p.balancer.decrementConnections(selected.Address)
 		p.balancer.setBackendHealth(selected.Address, false)
 	}
+}
+
+func (p *Proxy) wait() {
+	p.wg.Wait()
 }
 
 func (p *Proxy) waitWithTimeout(timeout time.Duration) bool {

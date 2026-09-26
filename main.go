@@ -50,6 +50,7 @@ func main() {
 	proxy := Proxy{
 		balancer:    balancer,
 		dialTimeout: config.DialTimeout,
+		connections: make(map[net.Conn]struct{}),
 	}
 
 	for {
@@ -65,9 +66,12 @@ func main() {
 		proxy.serveConnection(conn)
 	}
 
-	if proxy.waitWithTimeout(10 * time.Second) {
-		fmt.Println("All connections drained")
-	} else {
-		fmt.Println("Shutdown timed out")
+	if !proxy.waitWithTimeout(10 * time.Second) {
+		fmt.Println("Grace period expired, closing active connections")
+
+		proxy.closeConnections()
+		proxy.wait()
 	}
+
+	fmt.Println("Shutdown complete")
 }
