@@ -69,3 +69,13 @@ func (b *Balancer) chooseLeastConnectionsBackend() (Backend, error) {
 
 	return b.backends[index], nil
 }
+
+func (b *Balancer) getBackends() []Backend {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	backends := make([]Backend, len(b.backends))
+	copy(backends, b.backends)
+
+	return backends
+}
