@@ -28,7 +28,7 @@ jobs:
         run: |
           mkdir -p dist
 
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
             go build -trimpath -o dist/goproxy-linux-amd64 .
 
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
@@ -61,5 +61,5 @@ jobs:
           gh release create "${{ github.ref_name }}" \
              dist/*.tar.gz \
              dist/checksums.txt \
-             --title title "goproxy ${{ github.ref_name }}" \
+             --title "goproxy ${{ github.ref_name }}" \
              --generate-notes
