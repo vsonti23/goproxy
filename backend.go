@@ -1,8 +1,6 @@
 package main
 
-import (
-	"fmt"
-)
+import "log/slog"
 
 type Backend struct {
 	Address           string
@@ -42,10 +40,10 @@ func (b *Balancer) decrementConnections(address string) {
 	for i := range b.backends {
 		if b.backends[i].Address == address {
 			b.backends[i].ActiveConnections--
-			fmt.Printf(
-				"%s active connections: %d\n",
-				address,
-				b.backends[i].ActiveConnections,
+			slog.Info(
+				"active connections changed",
+				"backend", address,
+				"active_connections", b.backends[i].ActiveConnections,
 			)
 			return
 		}

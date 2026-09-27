@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"fmt"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 )
@@ -61,10 +61,10 @@ func (b *Balancer) chooseLeastConnectionsBackend() (Backend, error) {
 	candidateIndex := int(value-1) % len(candidateIndices)
 	index := candidateIndices[candidateIndex]
 	b.backends[index].ActiveConnections++
-	fmt.Printf(
-		"%s active connections: %d\n",
-		b.backends[index].Address,
-		b.backends[index].ActiveConnections,
+	slog.Debug(
+		"active connections changed",
+		"backend", b.backends[index].Address,
+		"active_connections", b.backends[index].ActiveConnections,
 	)
 
 	return b.backends[index], nil

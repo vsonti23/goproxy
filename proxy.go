@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"sync"
 	"time"
@@ -60,11 +60,11 @@ func (p *Proxy) closeConnections() {
 func (p *Proxy) handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	fmt.Println("Client connected:", conn.RemoteAddr())
+	slog.Info("Client connected", "address", conn.RemoteAddr())
 
 	serverConn, serverData, err := p.connectToBackend()
 	if err != nil {
-		fmt.Println("Error connecting to a server", err)
+		slog.Warn("Error connecting to a server", "err", err)
 		return
 	}
 
@@ -73,7 +73,7 @@ func (p *Proxy) handleConnection(conn net.Conn) {
 		serverConn.Close()
 	}()
 
-	fmt.Println("Connected to backend:", serverConn.RemoteAddr())
+	slog.Info("Connected to backend", "address", serverConn.RemoteAddr())
 
 	clientTCP := conn.(*net.TCPConn)
 	backendTCP := serverConn.(*net.TCPConn)
@@ -95,14 +95,14 @@ func (p *Proxy) handleConnection(conn net.Conn) {
 	err1 := <-done
 	err2 := <-done
 
-	fmt.Println("Closing Connection")
+	slog.Info("Closing Connection")
 
 	if err1 != nil {
-		fmt.Println("Proxy connection ended with error:", err1)
+		slog.Warn("Proxy connection ended with error:", "err", err1)
 	}
 
 	if err2 != nil {
-		fmt.Println("Proxy connection ended with error:", err2)
+		slog.Warn("Proxy connection ended with error:", "err", err2)
 	}
 }
 
@@ -123,7 +123,7 @@ func (p *Proxy) connectToBackend() (net.Conn, Backend, error) {
 			return conn, selected, nil
 		}
 
-		fmt.Println("Backend unavailable:", selected.Address)
+		slog.Warn("Backend unavailable", "address", selected.Address)
 		p.balancer.decrementConnections(selected.Address)
 		p.balancer.setBackendHealth(selected.Address, false)
 	}

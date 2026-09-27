@@ -2,8 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"os"
 	"os/signal"
@@ -12,9 +11,16 @@ import (
 )
 
 func main() {
+	logger := slog.New(
+		slog.NewTextHandler(os.Stdout, nil),
+	)
+
+	slog.SetDefault(logger)
+
 	config, err := parseConfig()
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed with error", "err", err)
+		os.Exit(1)
 	}
 
 	balancer := newBalancer(config.BackendAddresses)
@@ -28,16 +34,17 @@ func main() {
 
 	listener, err := net.Listen("tcp", config.ListenAddress)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("failed with error", "err", err)
+		os.Exit(1)
 	}
 
 	go func() {
 		<-ctx.Done()
-		fmt.Println("\nShutting down...")
+		slog.Info("Shutting down...")
 		listener.Close()
 	}()
 
-	fmt.Printf("Listening on %s\n", config.ListenAddress)
+	slog.Info("Listening on", "address", config.ListenAddress)
 
 	healthChecker := HealthChecker{
 		balancer:    balancer,
@@ -60,18 +67,18 @@ func main() {
 				break
 			}
 
-			log.Printf("accept error: %v", err)
+			slog.Warn("accept error", "err", err)
 			continue
 		}
 		proxy.serveConnection(conn)
 	}
 
 	if !proxy.waitWithTimeout(10 * time.Second) {
-		fmt.Println("Grace period expired, closing active connections")
+		slog.Info("Grace period expired, closing active connections")
 
 		proxy.closeConnections()
 		proxy.wait()
 	}
 
-	fmt.Println("Shutdown complete")
+	slog.Info("Shutdown complete")
 }

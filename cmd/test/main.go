@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"time"
 )
@@ -24,12 +24,12 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Printf("Got EOF after receiving: %q\n", data)
+	slog.Warn("Got EOF after receiving", "data", data)
 
 	// We received FIN, but our write direction is still open.
-	fmt.Println("Waiting 5 seconds...")
+	slog.Info("Waiting 5 seconds...")
 	time.Sleep(5 * time.Second)
 
-	fmt.Println("Sending response after EOF")
+	slog.Info("Sending response after EOF")
 	conn.Write([]byte("backend response\n"))
 }
