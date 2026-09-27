@@ -16,6 +16,7 @@ func main() {
 	)
 
 	slog.SetDefault(logger)
+	slog.Level.Level(slog.LevelInfo)
 
 	config, err := parseConfig()
 	if err != nil {
