@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests
+        run: go test -race ./...
+
+      - name: Build release binaries
+        run: |
+          mkdir -p dist
+
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+            go build -trimpath -o dist/goproxy-linux-amd64 .
+
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+            go build -trimpath -o dist/goproxy-linux-arm64 .
+
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 \
+            go build -trimpath -o dist/goproxy-darwin-arm64 .
+
+      - name: Package release binaries
+        run: |
+          cd dist
+
+          tar -czf goproxy-linux-amd64.tar.gz goproxy-linux-amd64
+          tar -czf goproxy-linux-arm64.tar.gz goproxy-linux-arm64
+          tar -czf goproxy-darwin-arm64.tar.gz goproxy-darwin-arm64
+
+          rm goproxy-linux-amd64
+          rm goproxy-linux-arm64
+          rm goproxy-darwin-arm64
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz > checksums.txt
+
+      - name: Github Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+             dist/*.tar.gz
+             dist/checksums.txt \
+             --title title "goproxy ${{ github.ref_name }}"
+             --generate notes
