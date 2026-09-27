@@ -44,6 +44,12 @@ func (p *Proxy) removeConnection(conn net.Conn) {
 
 func (p *Proxy) closeConnections() {
 	p.mu.Lock()
+
+	connections := make([]net.Conn, 0, len(p.connections))
+	for conn := range p.connections {
+		connections = append(connections, conn)
+	}
+
 	defer p.mu.Unlock()
 
 	for conn := range p.connections {
