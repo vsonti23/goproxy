@@ -50,7 +50,7 @@ func (p *Proxy) closeConnections() {
 		connections = append(connections, conn)
 	}
 
-	defer p.mu.Unlock()
+	p.mu.Unlock()
 
 	for conn := range p.connections {
 		conn.Close()
