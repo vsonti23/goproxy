@@ -86,3 +86,24 @@ func TestChooseLeastConnectionsBackendConcurrent(t *testing.T) {
 		)
 	}
 }
+
+func TestUnhealthyBackendIsNotSelected(t *testing.T) {
+	balancer := newBalancer([]string{
+		"localhost:9001",
+		"localhost:9002",
+		"localhost:9003",
+	})
+
+	balancer.setBackendHealth("localhost:9002", false)
+
+	for range 100 {
+		backend, err := balancer.chooseLeastConnectionsBackend()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if backend.Address == "localhost:9002" {
+			t.Fatal("unhealthy backend was selected")
+		}
+	}
+}
